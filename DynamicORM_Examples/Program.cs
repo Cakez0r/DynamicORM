@@ -42,7 +42,7 @@ namespace DynamicORM_Examples
                 {
                     IDictionary<string, object> daveProperties = (IDictionary<string, object>)dave;
                     db.Command(string.Format("UPDATE People SET {0} = '{1}'", e.PropertyName, daveProperties[e.PropertyName]));
-                };
+                }; 
 
             //Update dave's last login, which will cause the value to update in the database;
             dave.LastLogin = DateTime.Now - TimeSpan.FromDays(1);
