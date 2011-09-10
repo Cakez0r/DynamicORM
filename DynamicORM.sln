@@ -3,6 +3,8 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual C# Express 2010
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DynamicORM", "DynamicORM.csproj", "{D0164FBC-6CA0-4C41-A737-DA250AA051C2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DynamicORM_Examples", "DynamicORM_Examples\DynamicORM_Examples.csproj", "{6EDCA1B9-899B-4720-9D9B-E6D481935414}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,6 +25,16 @@ Global
 		{D0164FBC-6CA0-4C41-A737-DA250AA051C2}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{D0164FBC-6CA0-4C41-A737-DA250AA051C2}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{D0164FBC-6CA0-4C41-A737-DA250AA051C2}.Release|x86.ActiveCfg = Release|Any CPU
+		{6EDCA1B9-899B-4720-9D9B-E6D481935414}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{6EDCA1B9-899B-4720-9D9B-E6D481935414}.Debug|Mixed Platforms.ActiveCfg = Debug|x86
+		{6EDCA1B9-899B-4720-9D9B-E6D481935414}.Debug|Mixed Platforms.Build.0 = Debug|x86
+		{6EDCA1B9-899B-4720-9D9B-E6D481935414}.Debug|x86.ActiveCfg = Debug|x86
+		{6EDCA1B9-899B-4720-9D9B-E6D481935414}.Debug|x86.Build.0 = Debug|x86
+		{6EDCA1B9-899B-4720-9D9B-E6D481935414}.Release|Any CPU.ActiveCfg = Release|x86
+		{6EDCA1B9-899B-4720-9D9B-E6D481935414}.Release|Mixed Platforms.ActiveCfg = Release|x86
+		{6EDCA1B9-899B-4720-9D9B-E6D481935414}.Release|Mixed Platforms.Build.0 = Release|x86
+		{6EDCA1B9-899B-4720-9D9B-E6D481935414}.Release|x86.ActiveCfg = Release|x86
+		{6EDCA1B9-899B-4720-9D9B-E6D481935414}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,4 +1,4 @@
 *.suo
 *.csproj.user
-bin/*
-obj/*
+bin/
+obj/
