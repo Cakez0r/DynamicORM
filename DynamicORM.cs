@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Data.SqlClient;
-using System.Dynamic;
 using System.Data;
+using System.Data.SqlClient;
 using System.Reflection;
 
 namespace DynamicORM
@@ -14,102 +11,104 @@ namespace DynamicORM
     /// </summary>
     public class DynamicORM
     {
-        SqlConnection m_connection = new SqlConnection();
+        /// <summary>
+        /// A cached collection of stored procedure parameters.
+        /// This is kept to cut down on expensive calls to reflection operations.
+        /// </summary>
+        Dictionary<int, SqlParameter[]> m_parameterCache = new Dictionary<int, SqlParameter[]>();
+
 
         /// <summary>
-        /// Opens a connection to the database, given a connection string.
+        /// Gets or sets the default connection string to user
         /// </summary>
-        /// <param name="connectionString">The connection string to use</param>
-        /// <returns>Connection success state</returns>
-        public bool Connect(string connectionString)
+        public string ConnectionString
         {
-            m_connection.ConnectionString = connectionString;
-            m_connection.Open();
-            
-            return m_connection.State == ConnectionState.Open;
+            get;
+            set;
         }
 
 
         /// <summary>
-        /// Executes a command on the open connection.
+        /// Initialize with a default connection string
         /// </summary>
-        /// <param name="commandText">The SQL command to execute.</param>
-        /// <returns>An IEnumerable of dynamics that are populated with one row from the result set.</returns>
+        /// <param name="connectionString">The default connection string to use</param>
+        public DynamicORM(string connectionString)
+        {
+            ConnectionString = connectionString;
+        }
+
+
+        /// <summary>
+        /// Execute a SQL command
+        /// </summary>
+        /// <param name="commandText">The command to execute</param>
+        /// <returns>The result set of the command</returns>
         public IEnumerable<dynamic> Command(string commandText)
         {
-            SqlCommand command = new SqlCommand(commandText, m_connection);
-
-            return YieldCommandResults(command);
+            return Command(commandText, ConnectionString);
         }
 
 
         /// <summary>
-        /// Execute a stored procedure on the open connection
+        /// Execute a SQL command
         /// </summary>
-        /// <param name="procedureName">The name of the stored procedure to execute</param>
-        /// <param name="parameters">Object containing all the parameters of the stored procedure. Property names must match parameter names of the stored procedure.</param>
-        /// <returns>An IEnumerable of dynamics that are populated with one row from the result set.</returns>
-        public IEnumerable<dynamic> StoredProcedure(string procedureName, object parameters)
-        {
-            SqlCommand command = new SqlCommand(procedureName, m_connection);
-            command.CommandType = CommandType.StoredProcedure;
-
-            //Build procedure parameters from the parameters object
-            Dictionary<string, object> parameterNameValues = ObjectToDictionary(parameters);
-
-            foreach (KeyValuePair<string, object> parameter in parameterNameValues)
-            {
-                SqlParameter sqlParameter = new SqlParameter(parameter.Key, parameter.Value);
-                command.Parameters.Add(sqlParameter);
-            }
-
-            return YieldCommandResults(command);
-        }
-
-
-        /// <summary>
-        /// Execute a SqlCommand on the database and yield the rows from the result set one by one.
-        /// </summary>
-        /// <param name="command">The command to execute</param>
-        private IEnumerable<dynamic> YieldCommandResults(SqlCommand command)
+        /// <param name="commandText">The command to execute</param>
+        /// <param name="connectionString">The connection string to use for the command</param>
+        /// <returns>The result set of the command</returns>
+        public IEnumerable<dynamic> Command(string commandText, string connectionString)
         {
             //Execute the command
-            SqlDataReader reader = command.ExecuteReader();
+            ResultSet results = new ResultSet(connectionString, commandText);
 
-            //Start pulling rows
-            while (reader.Read())
+            return results;
+        }
+
+
+        /// <summary>
+        /// Execute a stored procedure
+        /// </summary>
+        /// <param name="procedureName">The stored procedure name to execute</param>
+        /// <param name="parameters">The parameters to pass to this stored procedure</param>
+        /// <returns>The result set of the command</returns>
+        public IEnumerable<dynamic> StoredProcedure(string procedureName, object parameters)
+        {
+            return StoredProcedure(procedureName, parameters, ConnectionString);
+        }
+
+
+        /// <summary>
+        /// Execute a stored procedure
+        /// </summary>
+        /// <param name="procedureName">The stored procedure name to execute</param>
+        /// <param name="parameters">The parameters to pass to this stored procedure</param>
+        /// <param name="connectionString">The connection string to use for the command</param>
+        /// <returns>The result set of the command</returns>
+        public IEnumerable<dynamic> StoredProcedure(string procedureName, object parameters, string connectionString)
+        {
+            //Check to see if we already have the parameters cached
+            SqlParameter[] sqlParameters = null;
+            int parametersHashCode = parameters.GetHashCode();
+            lock (m_parameterCache)
             {
-                //Create a new dynamic object for each row in the result set
-                dynamic results = new ExpandoObject();
-
-                //Cast the dynamic to an IDictionary, so that we can late-bind fields on it
-                IDictionary<string, object> resultsDictionary = (IDictionary<string, object>)results;
-
-                for (int i = 0; i < reader.FieldCount; i++)
+                if (m_parameterCache.ContainsKey(parametersHashCode))
                 {
-                    //For each column in the row, add a new field onto the dynamic object
-                    string key = reader.GetName(i);
-                    object value = reader.GetValue(i);
-
-                    if (resultsDictionary.ContainsKey(key))
-                    {
-                        //If the dynamic already has something for this column name then overwrite the value
-                        resultsDictionary[key] = value;
-                    }
-                    else
-                    {
-                        resultsDictionary.Add(key, value);
-                    }
+                    //Pull from the cache if we have them
+                    sqlParameters = m_parameterCache[parametersHashCode];
                 }
+                else
+                {
+                    //If the parameters aren't cached, then build up a dictionary for them
+                    sqlParameters = ObjectToSqlParameterList(parameters).ToArray();
 
-                yield return results;
+                    //And add it in to the cache
+                    m_parameterCache.Add(parametersHashCode, sqlParameters);
+                }
             }
 
-            //Close the reader when we are done.
-            reader.Close();
+            //Execute the command
+            ResultSet results = new ResultSet(connectionString, procedureName, sqlParameters);
 
-            //TODO: Having this function yield rows causes massive problems with the
-            //reader being closed in a timely manner. This will need to be addressed.
+            return results;
         }
 
 
@@ -117,11 +116,9 @@ namespace DynamicORM
         /// Converts an object into a dictionary of the object's property fields -> values
         /// </summary>
         /// <param name="obj">The object to convert</param>
-        private static Dictionary<string, object> ObjectToDictionary(object obj)
+        private static List<SqlParameter> ObjectToSqlParameterList(object obj)
         {
-            //TODO: Show this function some caching love, if possible.
-
-            Dictionary<string, object> dictionary = new Dictionary<string, object>();
+            List<SqlParameter> parameters = new List<SqlParameter>();
 
             Type type = obj.GetType();
 
@@ -134,10 +131,10 @@ namespace DynamicORM
                 string name = property.Name;
                 object value = property.GetValue(obj, null);
 
-                dictionary.Add(name, value);
+                parameters.Add(new SqlParameter(name, value));
             }
 
-            return dictionary;
+            return parameters;
         }
     }
 }
