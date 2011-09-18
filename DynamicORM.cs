@@ -70,6 +70,18 @@ namespace DynamicORM
         /// <param name="procedureName">The stored procedure name to execute</param>
         /// <param name="parameters">The parameters to pass to this stored procedure</param>
         /// <returns>The result set of the command</returns>
+        public IEnumerable<dynamic> StoredProcedure(string procedureName)
+        {
+            return StoredProcedure(procedureName, null, ConnectionString);
+        }
+
+
+        /// <summary>
+        /// Execute a stored procedure
+        /// </summary>
+        /// <param name="procedureName">The stored procedure name to execute</param>
+        /// <param name="parameters">The parameters to pass to this stored procedure</param>
+        /// <returns>The result set of the command</returns>
         public IEnumerable<dynamic> StoredProcedure(string procedureName, object parameters)
         {
             return StoredProcedure(procedureName, parameters, ConnectionString);
@@ -87,21 +99,25 @@ namespace DynamicORM
         {
             //Check to see if we already have the parameters cached
             SqlParameter[] sqlParameters = null;
-            int parametersHashCode = parameters.GetHashCode();
-            lock (m_parameterCache)
-            {
-                if (m_parameterCache.ContainsKey(parametersHashCode))
-                {
-                    //Pull from the cache if we have them
-                    sqlParameters = m_parameterCache[parametersHashCode];
-                }
-                else
-                {
-                    //If the parameters aren't cached, then build up a dictionary for them
-                    sqlParameters = ObjectToSqlParameterList(parameters).ToArray();
 
-                    //And add it in to the cache
-                    m_parameterCache.Add(parametersHashCode, sqlParameters);
+            if (parameters != null)
+            {
+                int parametersHashCode = parameters.GetHashCode();
+                lock (m_parameterCache)
+                {
+                    if (m_parameterCache.ContainsKey(parametersHashCode))
+                    {
+                        //Pull from the cache if we have them
+                        sqlParameters = m_parameterCache[parametersHashCode];
+                    }
+                    else
+                    {
+                        //If the parameters aren't cached, then build up a dictionary for them
+                        sqlParameters = ObjectToSqlParameterList(parameters).ToArray();
+
+                        //And add it in to the cache
+                        m_parameterCache.Add(parametersHashCode, sqlParameters);
+                    }
                 }
             }
 
